@@ -1,5 +1,8 @@
 # Cell
 import torch
+import numpy as np
+
+import matplotlib
 
 import matplotlib.pyplot as plt
 
@@ -10,7 +13,7 @@ def data_func(x):
 # Cell
 def get_data(n):
 
-    x = torch.linspace(0, 1, n).reshape(-1, 1)
+    x = torch.rand(n).reshape(-1, 1)
 
     y = data_func(x) + torch.randn((n, 1)) * 0.2
 
@@ -18,19 +21,20 @@ def get_data(n):
 
 
 # Cell
-x, y = get_data(10)
-plt.scatter(x.view(-1).numpy(), y.view(-1).numpy())
+# x, y = get_data(10)
+# plt.scatter(x.view(-1).numpy(), y.view(-1).numpy())
 
-plt_x = torch.linspace(0, 1, 100)
-plt_y = data_func(plt_x)
-plt.plot(plt_x, plt_y)
-plt.show()
+# plt_x = torch.linspace(0, 1, 100)
+# plt_y = data_func(plt_x)
+# plt.plot(plt_x, plt_y)
+# plt.show()
 
 def get_stacked(x, M):
     x_stacked = torch.stack(
         tuple((x ** i).view(-1) for i in range(M + 1)),
         dim=1
     )
+
     return x_stacked
 
 # Cell
@@ -76,33 +80,40 @@ def solve_grad(x, y, M):
     return w
 
 # Cell
-w_grad = solve_grad(x, y, 10)
+# w_grad = solve_grad(x, y, 10)
 
 # Cell
 
-def closed_form(x: torch.Tensor, y:torch.Tensor, M:int):
+def closed_form(x: torch.Tensor, y:torch.Tensor, M:int, lam=None):
     # Make T
     x_flat = x.reshape(-1)
     x_stacked = torch.stack(
         tuple(x_flat ** i for i in range(M + 1)),
         dim = 0
     )
+    
     T = x_stacked @ y.reshape(-1, 1)
 
     # Make A
     A_exponents = torch.arange(0, M + 1, 1) + torch.arange(0, M + 1, 1).reshape(-1, 1)
     A_exponents = A_exponents.reshape(M + 1, M + 1, 1)
 
-    A_xs = torch.ones(M + 1, M + 1, x.size(1)) * x.reshape(-1)
+    A_xs = torch.zeros(M + 1, M + 1, x.size(1)) + x.reshape(-1)
     A = (A_xs ** A_exponents).sum(2)
 
     # return A, T
 
+    if lam is not None:
+        A += torch.eye(M + 1) * lam
+
+    # w = np.linalg.inv(A.numpy()) @ T.numpy()
+    # return torch.tensor(w)
     w = torch.linalg.solve(A, T)
-    return w
+    return w, (A, T)
+
 
 # Cell
-w_exact = closed_form(x, y, 5)
+# w_exact = closed_form(x, y, 5)
 # A.shape, T.shape
 
 
@@ -119,14 +130,21 @@ def plot_results(x: torch.Tensor, y: torch.Tensor, w:torch.Tensor):
 
     plt.plot(X_plt, model_out.reshape(-1), label="predicted")
     plt.plot(X_plt, data_func(X_plt), label="data distribution")
+    plt.ylim((-1.2, 1.2))
     plt.legend()
+
 
     plt.show()
 
 # Cell
-plot_results(x, y, w_grad)
+# plot_results(x, y, w_grad)
 
 # Cell
-plot_results(x, y, w_exact)
+# plot_results(x, y, w_exact)
+
+# Cell
+x, y = get_data(10)
+w, _ = closed_form(x, y, 10, 0.001)
+plot_results(x, y, w)
 
 # Cell
