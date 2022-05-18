@@ -6,6 +6,7 @@ import matplotlib
 
 import matplotlib.pyplot as plt
 
+UPPER_BOUND = 1
 
 # Cell
 def data_func(x):
@@ -13,7 +14,8 @@ def data_func(x):
 # Cell
 def get_data(n):
 
-    x = torch.rand(n).reshape(-1, 1)
+    # x = torch.linspace(0, UPPER_BOUND, n).reshape(-1, 1)
+    x = torch.rand((n, 1))
 
     y = data_func(x) + torch.randn((n, 1)) * 0.2
 
@@ -21,13 +23,15 @@ def get_data(n):
 
 
 # Cell
-# x, y = get_data(10)
-# plt.scatter(x.view(-1).numpy(), y.view(-1).numpy())
+x, y = get_data(10)
+plt.scatter(x.view(-1).numpy(), y.view(-1).numpy())
 
-# plt_x = torch.linspace(0, 1, 100)
-# plt_y = data_func(plt_x)
-# plt.plot(plt_x, plt_y)
-# plt.show()
+plt_x = torch.linspace(0, 1, 100)
+plt_y = data_func(plt_x)
+plt.plot(plt_x, plt_y)
+plt.show()
+
+# Cell
 
 def get_stacked(x, M):
     x_stacked = torch.stack(
@@ -85,6 +89,7 @@ def solve_grad(x, y, M):
 # Cell
 
 def closed_form(x: torch.Tensor, y:torch.Tensor, M:int, lam=None):
+    x, y = x.double(), y.double()
     # Make T
     x_flat = x.reshape(-1)
     x_stacked = torch.stack(
@@ -96,20 +101,26 @@ def closed_form(x: torch.Tensor, y:torch.Tensor, M:int, lam=None):
 
     # Make A
     A_exponents = torch.arange(0, M + 1, 1) + torch.arange(0, M + 1, 1).reshape(-1, 1)
+
     A_exponents = A_exponents.reshape(M + 1, M + 1, 1)
 
     A_xs = torch.zeros(M + 1, M + 1, x.size(1)) + x.reshape(-1)
+
     A = (A_xs ** A_exponents).sum(2)
 
     # return A, T
 
+    A, T = A.double(), T.double()
+
     if lam is not None:
         A += torch.eye(M + 1) * lam
+
+    print(torch.linalg.cond(A))
 
     # w = np.linalg.inv(A.numpy()) @ T.numpy()
     # return torch.tensor(w)
     w = torch.linalg.solve(A, T)
-    return w, (A, T)
+    return w.float(), (A, T)
 
 
 # Cell
@@ -123,7 +134,7 @@ def plot_results(x: torch.Tensor, y: torch.Tensor, w:torch.Tensor):
     # x_stacked = get_stacked(x, M)
 
     plt.scatter(x.numpy(), y.numpy())
-    X_plt = torch.linspace(0, 1, 100)
+    X_plt = torch.linspace(0, UPPER_BOUND, 1000)
     X_plt_stacked = get_stacked(X_plt, M)
     with torch.no_grad():
         model_out = model(X_plt_stacked, w)
@@ -143,8 +154,9 @@ def plot_results(x: torch.Tensor, y: torch.Tensor, w:torch.Tensor):
 # plot_results(x, y, w_exact)
 
 # Cell
-x, y = get_data(10)
-w, _ = closed_form(x, y, 10, 0.001)
+n = 9
+x, y = get_data(n)
+w, _ = closed_form(x, y, n)
 plot_results(x, y, w)
 
 # Cell
